@@ -1,0 +1,504 @@
+<style>
+    .button_design {
+        border-radius: 2px;
+        border: 1px solid;
+        padding: 0.3rem 1.4rem;
+        font-weight: 700;
+        letter-spacing: .25px;
+        display: inline-block;
+        cursor: pointer;
+        text-align: left;
+        background: var(--awsui-color-background-button-normal-default);
+        font-size: 1rem;
+        line-height: 1.4rem;
+    }
+
+    .submit_button {
+        background: #ec7211;
+        border-color: #ec7211;
+        color: #FFFFFF;
+        margin-left: 4px;
+    }
+
+    .submit_button:disabled {
+        background: #D8D8D8;
+        border-color: #D8D8D8;
+    }
+
+    .submit_button:hover:enabled {
+        background: #dd6b10;
+        border-color: #dd6b10;
+    }
+
+</style>
+
+<div style="display:none;font-family:Amazon Ember,Helvetica Neue,Roboto,Arial,sans-serif;">&nbsp;</div>
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" rel="stylesheet" /><script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.js"></script>
+<div style="display:inline-block;vertical-align:top;width: 100%;">
+    <div style="margin: auto;width: 968px;" id="instructions">
+        <h1 align="center"><strong>Bounding box annotation</strong></h1>
+        <p>
+            In this task, you are provided with highlighted images that show which areas of an image, an artificial intelligence prediction model uses. Your annotations will assist us in understanding what these areas represent by drawing bounding boxes and describing them.<br/><br/>
+            <strong>Instructions:</strong>
+            <ul>
+                <li>Draw a box using your mouse over each highlighted area in the image on the right, describe that area and press ENTER.</li>
+                <li>You <strong><u>only</u></strong> need to consider areas that are highlighted with orange, red or yellow colours.</li>
+                <li>Each box should contain <strong>at most one</strong> element. If you identify multiple elements within a highlighted area, then draw multiple boxes.</li>
+                <li>An element can refer to clothing, an object, a body part, an accessory or other information you consider worth annotating.</li>
+                <li>For each box description, use single words separated by a comma.</li>
+                <ul>
+                    <li>Each description should contain at most <strong>one noun</strong> corresponding to the element.</li>
+                    <li>Each element should also be described by <strong>one or more adjectives</strong> related to its attributes. For instance, these can refer to the colour, length, texture, pattern, shape of each element and more.</li>
+                    <li>If the element cannot be described by an adjective, enter the word "none" in the attribute field.</li>
+                </ul>
+            </ul>
+        </p>
+    </div>
+    <div style="margin: auto;width: 968px;" id="examples">
+        <div style="display:inline-block;float: left; width: 464px;" id="example_1">
+            <p>
+                <strong>Example 1: </strong>
+            </p>
+            <div style="float: left;">
+                <p align="center"><b>Original image</b></p>
+                <img src="https://saliency-map-annotations.s3.amazonaws.com/example_images/example1_image.png" title="Original Image" style="width: 225px; height: 225px" />
+            </div>
+            <div style="margin-left: 10px; float: left;">
+                <p align="center"><b>Highlighted image to annotate</b></p>
+                <img src="https://saliency-map-annotations.s3.amazonaws.com/example_images/example1_heatmap.png" title="Heatmap Image" style="width: 225px; height: 225px" />
+            </div>
+            <div style="clear: both;"></div>
+            <p>This image contains a large and a small highlighted area. The small one corresponds to the person's "shirt" while the large one contains two elements, "hair" and "face". The three boxes get described with these nouns and extra adjectives that describe the element attributes.</p>
+        </div>
+        <div style="display:inline-block;margin-left: 30px; float: left; width: 464px;" id="example_2">
+            <p>
+                <strong>Example 2: </strong>
+            </p>
+            <div style="float: left;">
+                <p align="center"><b>Original image</b></p>
+                <img src="https://saliency-map-annotations.s3.amazonaws.com/example_images/example2_image.png" title="Original Image" style="width: 225px; height: 225px" />
+            </div>
+            <div style="margin-left: 10px; float: left;">
+                <p align="center"><b>Highlighted image to annotate</b></p>
+                <img src="https://saliency-map-annotations.s3.amazonaws.com/example_images/example2_heatmap.png" title="Heatmap Image" style="width: 225px; height: 225px" />
+            </div>
+            <div style="clear: both;"></div>
+            <p>This image contains three highlighted areas which comprise of four separate elements, "forehead", "hair", "shirt" and "pavement". Therefore, four separate boxes are required to annotate those areas. Notice how each element is annotated with at least one attribute.</p>
+        </div>
+    </div>
+    <div style="margin: auto;width: 968px;" id="examples">
+        <p>
+            <strong>Task: </strong>
+            Please provide your annotation for the image below.
+        </p>
+        <div style="margin: auto;width: 464px;">
+            <div style="float: left;">
+                <p align="center"><b>Original image</b></p>
+                <img src="${original_image_url}" title="Original Image" style="width: 225px; height: 225px" />
+            </div>
+            <div style="margin-left: 10px; float: left;">
+                <p align="center"><b>Highlighted image to annotate</b></p>
+                <div id="bbox_annotator"  style="display:inline-block">&nbsp;</div>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+        <p id="button_paragraph" align="right"><input id="annotation_data" name="annotation_data" type="hidden" /> <input id="reset_button" class="button_design" type="reset" /></p>
+    </div>
+</div>
+
+<script type="text/javascript">
+(function() {
+  var BBoxSelector;
+BBoxSelector = (function() {
+function BBoxSelector(image_frame, options) {
+      if (options == null) {
+        options = {};
+      }
+      options.input_method || (options.input_method = "text");
+      this.image_frame = image_frame;
+      this.border_width = options.border_width || 2;
+      this.selector = $('<div class="bbox_selector"></div>');
+      this.selector.css({
+        "border": this.border_width + "px dotted rgb(127,255,127)",
+        "position": "absolute"
+      });
+      this.image_frame.append(this.selector);
+      this.selector.css({
+        "border-width": this.border_width
+      });
+      this.selector.hide();
+      this.create_label_box(options);
+    }
+BBoxSelector.prototype.create_label_box = function(options) {
+      var label, _i, _len, _ref;
+      options.labels || (options.labels = ["object"]);
+      this.label_box = $('<div class="label_box"></div>');
+      this.label_box.css({
+        "position": "absolute"
+      });
+      this.label_box.css({
+        "z-index": "1000"
+      });
+      this.image_frame.append(this.label_box);
+      switch (options.input_method) {
+        case 'select':
+          if (typeof options.labels === "string") {
+            options.labels = [options.labels];
+          }
+          this.label_input = $('<select class="label_input" name="label"></select>');
+          this.label_box.append(this.label_input);
+          this.label_input.append($('<option value>choose an item</option>'));
+          _ref = options.labels;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            label = _ref[_i];
+            this.label_input.append('<option value="' + label + '">' + label + '</option>');
+          }
+          this.label_input.change(function(e) {
+            return this.blur();
+          });
+          break;
+        case 'text':
+          if (typeof options.labels === "string") {
+            options.labels = [options.labels];
+          }
+          this.label_object_input = $('<input class="label_input object" name="object" placeholder="Element" ' + 'type="text" value>');
+          this.label_attributes_input = $('<input class="label_input attributes" name="attributes" placeholder="Attributes" ' + 'type="text" value>');
+          this.label_box.append(this.label_object_input);
+          this.label_box.append(this.label_attributes_input);
+          // Remove autocomplete functionality based on previously input values
+          this.label_object_input.autocomplete({
+            source: [''],
+            autoFocus: true
+          });
+          this.label_attributes_input.autocomplete({
+            source: [''],
+            autoFocus: true
+          });
+          break;
+        case 'fixed':
+          if ($.isArray(options.labels)) {
+            options.labels = options.labels[0];
+          }
+          this.label_input = $('<input class="label_input" name="label" type="text">');
+          this.label_box.append(this.label_input);
+          this.label_input.val(options.labels);
+          break;
+        default:
+          throw 'Invalid label_input parameter: ' + options.input_method;
+      }
+      return this.label_box.hide();
+    };
+BBoxSelector.prototype.crop = function(pageX, pageY) {
+      var point;
+      return point = {
+        x: Math.min(Math.max(Math.round(pageX - this.image_frame.offset().left), 0), Math.round(this.image_frame.width() - 1)),
+        y: Math.min(Math.max(Math.round(pageY - this.image_frame.offset().top), 0), Math.round(this.image_frame.height() - 1))
+      };
+    };
+BBoxSelector.prototype.start = function(pageX, pageY) {
+      this.pointer = this.crop(pageX, pageY);
+      this.offset = this.pointer;
+      this.refresh();
+      this.selector.show();
+      $('body').css('cursor', 'crosshair');
+      return document.onselectstart = function() {
+        return false;
+      };
+    };
+BBoxSelector.prototype.update_rectangle = function(pageX, pageY) {
+      this.pointer = this.crop(pageX, pageY);
+      return this.refresh();
+    };
+
+// Move the cursor to the object field when creating a new box
+BBoxSelector.prototype.input_label = function(options) {
+      $('body').css('cursor', 'default');
+      document.onselectstart = function() {
+        return true;
+      };
+      this.label_box.show();
+      return this.label_object_input.focus();
+    };
+
+BBoxSelector.prototype.finish = function(options) {
+      var data;
+      this.label_box.hide();
+      this.selector.hide();
+      data = this.rectangle();
+      data.object_label = $.trim(this.label_object_input.val().toLowerCase());
+      data.attributes_label = $.trim(this.label_attributes_input.val().toLowerCase());
+      if (options.input_method !== 'fixed') {
+        this.label_attributes_input.val('');
+        this.label_object_input.val('');
+      }
+      return data;
+    };
+BBoxSelector.prototype.rectangle = function() {
+      var rect, x1, x2, y1, y2;
+      x1 = Math.min(this.offset.x, this.pointer.x);
+      y1 = Math.min(this.offset.y, this.pointer.y);
+      x2 = Math.max(this.offset.x, this.pointer.x);
+      y2 = Math.max(this.offset.y, this.pointer.y);
+      return rect = {
+        left: x1,
+        top: y1,
+        width: x2 - x1 + 1,
+        height: y2 - y1 + 1
+      };
+    };
+BBoxSelector.prototype.refresh = function() {
+      var rect;
+      rect = this.rectangle();
+      this.selector.css({
+        left: (rect.left - this.border_width) + 'px',
+        top: (rect.top - this.border_width) + 'px',
+        width: rect.width + 'px',
+        height: rect.height + 'px'
+      });
+      return this.label_box.css({
+        left: (rect.left - this.border_width) + 'px',
+        top: (rect.top + rect.height + this.border_width) + 'px'
+      });
+    };
+    // Use the label attributes textfield as a signal that the input is complete
+BBoxSelector.prototype.get_input_element = function() {
+      return this.label_attributes_input;
+    };
+return BBoxSelector;
+})();
+this.BBoxAnnotator = (function() {
+function BBoxAnnotator(options) {
+      var annotator, image_element;
+      annotator = this;
+      this.annotator_element = $(options.id || "#bbox_annotator");
+      this.border_width = options.border_width || 2;
+      this.show_label = options.show_label || (options.input_method !== "fixed");
+      this.image_frame = $('<div class="image_frame"></div>');
+      this.annotator_element.append(this.image_frame);
+      image_element = new Image();
+      image_element.src = options.url;
+      image_element.onload = function() {
+        options.width || (options.width = image_element.width);
+        options.height || (options.height = image_element.height);
+        annotator.annotator_element.css({
+          "width": (options.width + annotator.border_width * 2) + 'px',
+          "height": (options.height + annotator.border_width * 2) + 'px',
+          "cursor": "crosshair"
+        });
+        annotator.image_frame.css({
+          "background-image": "url('" + image_element.src + "')",
+          "width": options.width + "px",
+          "height": options.height + "px",
+          "position": "relative",
+          "margin-top": "-18px"
+        });
+        annotator.selector = new BBoxSelector(annotator.image_frame, options);
+        return annotator.initialize_events(annotator.selector, options);
+      };
+      image_element.onerror = function() {
+        return annotator.annotator_element.text("Invalid image URL: " + options.url);
+      };
+      this.entries = [];
+      this.onchange = options.onchange;
+    }
+BBoxAnnotator.prototype.initialize_events = function(selector, options) {
+      var annotator, status;
+      status = 'free';
+      this.hit_menuitem = false;
+      annotator = this;
+      this.annotator_element.mousedown(function(e) {
+        if (!annotator.hit_menuitem) {
+          switch (status) {
+            case 'free':
+            case 'input':
+              if (status === 'input') {
+                selector.get_input_element().blur();
+              }
+              if (e.which === 1) {
+                selector.start(e.pageX, e.pageY);
+                status = 'hold';
+              }
+          }
+        }
+        annotator.hit_menuitem = false;
+        return true;
+      });
+      $(window).mousemove(function(e) {
+        switch (status) {
+          case 'hold':
+            selector.update_rectangle(e.pageX, e.pageY);
+        }
+        return true;
+      });
+      $(window).mouseup(function(e) {
+        switch (status) {
+          case 'hold':
+            selector.update_rectangle(e.pageX, e.pageY);
+            selector.input_label(options);
+            status = 'input';
+            if (options.input_method === 'fixed') {
+              selector.get_input_element().blur();
+            }
+        }
+        return true;
+      });
+      selector.get_input_element().blur(function(e) {
+        var data;
+        var label_object_input = selector.label_object_input;
+        var label_attributes_input = selector.label_attributes_input;
+        switch (status) {
+          case 'input':
+            data = selector.finish(options);
+            if (data.object_label  && data.attributes_label) {
+                if (data.object_label.includes(",") || data.object_label.includes(" ")) {
+                    alert("Each element should be described by a single noun!");
+                }
+                else {
+                    annotator.add_entry(data); // Show user annotation is UI and save it in #annotation_data
+                    if (annotator.onchange) {
+                        annotator.onchange(annotator.entries);
+
+                    }
+                }
+            } else if (data.object_label  || data.attributes_label) {
+                alert("Please fill in both requested fields!");
+            }
+            status = 'free';
+        }
+        return true;
+      });
+      selector.get_input_element().keypress(function(e) {
+        switch (status) {
+          case 'input':
+            if (e.which === 13) {
+              selector.get_input_element().blur();
+            }
+        }
+        return e.which !== 13;
+      });
+      selector.get_input_element().mousedown(function(e) {
+        return annotator.hit_menuitem = true;
+      });
+      selector.get_input_element().mousemove(function(e) {
+        return annotator.hit_menuitem = true;
+      });
+      selector.get_input_element().mouseup(function(e) {
+        return annotator.hit_menuitem = true;
+      });
+      return selector.get_input_element().parent().mousedown(function(e) {
+        return annotator.hit_menuitem = true;
+      });
+    };
+BBoxAnnotator.prototype.add_entry = function(entry) {
+      var annotator, box_element, close_button, text_box;
+      this.entries.push(entry);
+      box_element = $('<div class="annotated_bounding_box"></div>');
+      box_element.appendTo(this.image_frame).css({
+        "border": this.border_width + "px solid rgb(127,255,127)",
+        "position": "absolute",
+        "top": (entry.top - this.border_width) + "px",
+        "left": (entry.left - this.border_width) + "px",
+        "width": entry.width + "px",
+        "height": entry.height + "px",
+        "color": "rgb(127,255,127)",
+        "font-family": "monospace",
+        "font-size": "small"
+      });
+      close_button = $('<div></div>').appendTo(box_element).css({
+        "position": "absolute",
+        "top": "-8px",
+        "right": "-8px",
+        "width": "16px",
+        "height": "0",
+        "padding": "16px 0 0 0",
+        "overflow": "hidden",
+        "color": "#fff",
+        "background-color": "#030",
+        "border": "2px solid #fff",
+        "-moz-border-radius": "18px",
+        "-webkit-border-radius": "18px",
+        "border-radius": "18px",
+        "cursor": "pointer",
+        "-moz-user-select": "none",
+        "-webkit-user-select": "none",
+        "user-select": "none",
+        "text-align": "center"
+      });
+      $("<div></div>").appendTo(close_button).html('×').css({
+        "display": "block",
+        "text-align": "center",
+        "width": "16px",
+        "position": "absolute",
+        "top": "-2px",
+        "left": "0",
+        "font-size": "16px",
+        "line-height": "16px",
+        "font-family": '"Helvetica Neue", Consolas, Verdana, Tahoma, Calibri, ' + 'Helvetica, Menlo, "Droid Sans", sans-serif'
+      });
+      text_box = $('<div></div>').appendTo(box_element).css({
+        "overflow": "hidden"
+      });
+      if (this.show_label) {
+        text_box.html(entry.object_label  + ":<br/>" + entry.attributes_label);
+      }
+      annotator = this;
+      box_element.hover((function(e) {
+        return close_button.show();
+      }), (function(e) {
+        return close_button.hide();
+      }));
+      close_button.mousedown(function(e) {
+        return annotator.hit_menuitem = true;
+      });
+      close_button.click(function(e) {
+        var clicked_box, index;
+        clicked_box = close_button.parent(".annotated_bounding_box");
+        index = clicked_box.prevAll(".annotated_bounding_box").length;
+        clicked_box.detach();
+        annotator.entries.splice(index, 1);
+        return annotator.onchange(annotator.entries);
+      });
+      return close_button.hide();
+    };
+BBoxAnnotator.prototype.clear_all = function(e) {
+      $(".annotated_bounding_box").detach();
+      this.entries.splice(0);
+      return this.onchange(this.entries);
+    };
+return BBoxAnnotator;
+})();
+}).call(this);
+// Main entry point. Use a placeholder for image urls.
+$(document).ready(function() {
+  var assignment_id = turkGetParam('assignmentId', "");
+  // Initialize the bounding-box annotator.
+  var annotator = new BBoxAnnotator({
+    // url: "https://saliency-map-annotations.s3.amazonaws.com/example_images/example2_overlay.png",
+    url: "${heatmap_image_url}",
+    input_method: 'text', // Can be one of ['text', 'select', 'fixed']
+    // labels: ["dress", "top", "skirt", "pants", "shoes"], // Label of the object.
+    onchange: function(entries) {
+      $("#annotation_data").val(JSON.stringify(entries));
+      if (entries.length > 0 &&
+          assignment_id != "" &&
+          assignment_id != "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        $("#submitButton").removeAttr("disabled");
+      }
+      else {
+        $("#submitButton").attr("disabled", "disabled");
+      }
+    }
+  });
+  // Initialize the reset button.
+  $("#reset_button").click(function(e) {
+    annotator.clear_all();
+  });
+  // Disable the submission at the beginning.
+  $("#submitButton").attr("disabled", "disabled");
+  $("#submitButton").addClass("button_design submit_button");
+  $("#submitButton").detach().appendTo("#button_paragraph");
+  if (assignment_id == "ASSIGNMENT_ID_NOT_AVAILABLE") {
+    $("#submitButton").val("This is preview");
+  }
+});
+</script>
