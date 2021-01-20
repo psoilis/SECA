@@ -1,1 +1,1 @@
-# Global Interpretability via SEmantic Feature Analysis (SEFA)
+# Global Interpretability via SEmantic Concept extraction and Analysis (SECA)
